@@ -1,13 +1,21 @@
 from pathlib import Path
+import os
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'replace-me-in-prod'
-DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xxx-changez-moi')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'tonpseudo.pythonanywhere.com',   # à remplacer
+]
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 INSTALLED_APPS = [
-    # Apps internes
     'users',
     'artisans',
     'django.contrib.admin',
@@ -16,8 +24,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Apps tierces
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
@@ -33,10 +39,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
+# Pas de TEMPLATES DIRS car pas de templates Django
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [],   # vide
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -53,11 +60,10 @@ ROOT_URLCONF = 'artiz.urls'
 WSGI_APPLICATION = 'artiz.wsgi.application'
 ASGI_APPLICATION = 'artiz.asgi.application'
 
-# ✅ Configuration SQLite (remplace PostgreSQL)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',  # Le fichier sera créé à la racine du projet
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -69,8 +75,21 @@ REST_FRAMEWORK = {
     ),
 }
 
+# Dossier contenant le build React (index.html, assets, etc.)
+STATICFILES_DIRS = [
+    BASE_DIR / 'frontend_build',
+]
+
 STATIC_URL = '/static/'
-CORS_ALLOW_ALL_ORIGINS = True
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# CORS
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        'https://tonpseudo.pythonanywhere.com',
+    ]
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 TIME_ZONE = 'Africa/Porto-Novo'
 USE_TZ = True

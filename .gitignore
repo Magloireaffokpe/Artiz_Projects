@@ -19,6 +19,7 @@ node_modules/
 /dist/
 *.log
 .env.local
+.env
 .env.development.local
 .env.test.local
 .env.production.local
@@ -37,3 +38,6 @@ Thumbs.db
 *.p12
 secrets/
 .fetch-client/
+
+*.pyc
+

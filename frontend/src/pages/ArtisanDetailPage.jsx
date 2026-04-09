@@ -13,8 +13,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import ReservationModal from "../components/ReservationModal";
-
-const API_URL = "http://localhost:8000/api/v1/artisans/";
+import apiClient from "../services/api";
 
 const ArtisanDetailPage = () => {
   const { id } = useParams();
@@ -27,9 +26,10 @@ const ArtisanDetailPage = () => {
   useEffect(() => {
     const fetchArtisan = async () => {
       try {
-        const response = await axios.get(`${API_URL}${id}/`);
+        const response = await apiClient.get(`/artisans/${id}/`);
         setArtisan(response.data);
       } catch (e) {
+        console.error(e);
         setError("Impossible de charger le profil de cet artisan.");
       } finally {
         setLoading(false);

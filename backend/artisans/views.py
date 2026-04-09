@@ -4,6 +4,8 @@ from .serializers import ArtisanSerializer, ReservationSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from .permissions import IsOwnerOrReadOnly
+
 class ArtisanListView(generics.ListAPIView):
     queryset = ArtisanProfile.objects.all()
     serializer_class = ArtisanSerializer
@@ -12,7 +14,7 @@ class ArtisanListView(generics.ListAPIView):
 class ArtisanDetailView(generics.RetrieveUpdateAPIView):
     queryset = ArtisanProfile.objects.all()
     serializer_class = ArtisanSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsOwnerOrReadOnly]
 
 class ArtisanSearchView(APIView):
     def get(self, request):
