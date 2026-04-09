@@ -48,7 +48,7 @@ Application-Web--Recherche-d-artisans-Benin/
 │   │   ├── serializers.py
 │   │   ├── views.py
 │   │   └── urls.py
-│   ├── tchekpe/           # Configuration du projet Django
+│   ├── artiz/           # Configuration du projet Django
 │   │   ├── settings.py
 │   │   └── urls.py
 │   ├── db.sqlite3         # Base de données (non versionnée)

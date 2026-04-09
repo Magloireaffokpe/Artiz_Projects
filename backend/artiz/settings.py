@@ -49,9 +49,9 @@ TEMPLATES = [
     },
 ]
 
-ROOT_URLCONF = 'tchekpe.urls'
-WSGI_APPLICATION = 'tchekpe.wsgi.application'
-ASGI_APPLICATION = 'tchekpe.asgi.application'
+ROOT_URLCONF = 'artiz.urls'
+WSGI_APPLICATION = 'artiz.wsgi.application'
+ASGI_APPLICATION = 'artiz.asgi.application'
 
 # ✅ Configuration SQLite (remplace PostgreSQL)
 DATABASES = {
