@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useInView } from "framer-motion";
 import { Helmet } from "react-helmet-async";
 import {
   Search,
@@ -84,26 +83,36 @@ const STATS = [
   { value: 24, suffix: "h", label: "Délai de réponse moyen", Icon: Clock },
 ];
 
-// ─── ANIMATED COUNT ────────────────────────────────────────────────────────────
+// ─── COMPOSANT POUR LE COMPTEUR ANIMÉ (sans framer-motion) ─────────────────────
 function AnimatedCount({ target, suffix }) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true });
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   useEffect(() => {
-    if (!inView) return;
-    let frame;
-    const duration = 1200;
-    const start = performance.now();
-    const tick = (now) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setCount(Math.round(eased * target));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [inView, target]);
+    if (hasAnimated) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setHasAnimated(true);
+          let start = 0;
+          const duration = 1200;
+          const step = (timestamp) => {
+            if (!start) start = timestamp;
+            const progress = Math.min((timestamp - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setCount(Math.round(eased * target));
+            if (progress < 1) requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target, hasAnimated]);
 
   return (
     <span ref={ref} aria-label={`${target}${suffix}`}>
@@ -113,20 +122,16 @@ function AnimatedCount({ target, suffix }) {
   );
 }
 
-// ─── SERVICE CARD ──────────────────────────────────────────────────────────────
+// ─── SERVICE CARD (avec animations CSS Tailwind) ──────────────────────────────
 function ServiceCard({ service, onClick }) {
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.45 }}
+    <article
       onClick={onClick}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
       tabIndex={0}
       role="button"
       aria-label={`Trouver un artisan en ${service.label}`}
-      className="group relative rounded-2xl overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+      className="group relative rounded-2xl overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white transition-all duration-500 hover:scale-[1.02]"
       style={{ aspectRatio: "4/3" }}
     >
       <img
@@ -134,9 +139,7 @@ function ServiceCard({ service, onClick }) {
         alt={`Artisan travaillant en ${service.label}`}
         loading="lazy"
         decoding="async"
-        width={600}
-        height={450}
-        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
       />
       <div
         className="absolute inset-0"
@@ -170,7 +173,7 @@ function ServiceCard({ service, onClick }) {
           Voir les artisans <ArrowRight size={10} />
         </span>
       </div>
-    </motion.article>
+    </article>
   );
 }
 
@@ -224,8 +227,6 @@ const HomePage = () => {
             src="/images/hero.webp"
             alt="Artisans maçons travaillant sur un chantier de construction"
             fetchpriority="high"
-            width={2070}
-            height={1380}
             className="absolute inset-0 w-full h-full object-cover object-center"
           />
           <div
@@ -237,32 +238,14 @@ const HomePage = () => {
             }}
           />
           <div className="relative z-10 w-full max-w-5xl mx-auto px-6 flex flex-col items-center text-center pt-36 pb-28">
-            <motion.div
-              initial={{ opacity: 0, y: -16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8"
-              style={{
-                background: "rgba(255,255,255,0.11)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.20)",
-              }}
-            >
-              <span
-                className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
-                aria-hidden="true"
-              />
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 animate-fade-in-down bg-white/10 backdrop-blur-md border border-white/20">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-white/90 text-sm font-semibold">
                 Plateforme #1 des artisans au Bénin
               </span>
-            </motion.div>
+            </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 28 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.12 }}
-              className="text-5xl md:text-7xl font-black text-white leading-[1.05] mb-6 tracking-tight"
-            >
+            <h1 className="text-5xl md:text-7xl font-black text-white leading-[1.05] mb-6 tracking-tight animate-fade-in-up">
               L'artisan qu'il vous faut,
               <br />
               <span
@@ -274,41 +257,21 @@ const HomePage = () => {
               >
                 à portée de main.
               </span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.65, delay: 0.28 }}
-              className="text-lg md:text-xl text-white/60 max-w-xl mb-14 leading-relaxed"
-            >
+            <p className="text-lg md:text-xl text-white/60 max-w-xl mb-14 leading-relaxed animate-fade-in">
               Professionnels locaux vérifiés par la communauté. Réservez en
               toute confiance, sans intermédiaire.
-            </motion.p>
+            </p>
 
-            <motion.form
-              initial={{ opacity: 0, y: 32 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.42 }}
+            <form
               onSubmit={handleSearch}
               aria-label="Recherche d'artisan"
-              className="w-full max-w-3xl rounded-2xl p-2"
-              style={{
-                background: "rgba(255,255,255,0.11)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255,255,255,0.18)",
-              }}
+              className="w-full max-w-3xl rounded-2xl p-2 bg-white/10 backdrop-blur-md border border-white/20 animate-fade-in-up"
             >
               <div className="flex flex-col md:flex-row gap-2">
-                <div
-                  className="flex-1 flex items-center rounded-xl px-4 py-1 border border-white/15 focus-within:border-indigo-400 transition-all"
-                  style={{ background: "rgba(255,255,255,0.08)" }}
-                >
-                  <Search
-                    size={18}
-                    className="text-white/45 mr-3"
-                    aria-hidden="true"
-                  />
+                <div className="flex-1 flex items-center rounded-xl px-4 py-1 border border-white/15 bg-white/10 focus-within:border-indigo-400 transition-all">
+                  <Search size={18} className="text-white/45 mr-3" />
                   <label htmlFor="hero-service" className="sr-only">
                     Type de service recherché
                   </label>
@@ -316,7 +279,7 @@ const HomePage = () => {
                     id="hero-service"
                     value={serviceType}
                     onChange={(e) => setServiceType(e.target.value)}
-                    className="w-full bg-transparent py-3.5 focus:outline-none cursor-pointer text-sm font-medium text-white placeholder-white/40"
+                    className="w-full bg-transparent py-3.5 focus:outline-none cursor-pointer text-sm font-medium text-white"
                   >
                     <option value="" className="text-gray-900">
                       Quel service ?
@@ -331,15 +294,8 @@ const HomePage = () => {
                     </option>
                   </select>
                 </div>
-                <div
-                  className="flex-1 flex items-center rounded-xl px-4 py-1 border border-white/15 focus-within:border-indigo-400 transition-all"
-                  style={{ background: "rgba(255,255,255,0.08)" }}
-                >
-                  <MapPin
-                    size={18}
-                    className="text-white/45 mr-3"
-                    aria-hidden="true"
-                  />
+                <div className="flex-1 flex items-center rounded-xl px-4 py-1 border border-white/15 bg-white/10 focus-within:border-indigo-400 transition-all">
+                  <MapPin size={18} className="text-white/45 mr-3" />
                   <label htmlFor="hero-location" className="sr-only">
                     Ville ou quartier
                   </label>
@@ -362,21 +318,12 @@ const HomePage = () => {
                   Rechercher
                 </button>
               </div>
-            </motion.form>
+            </form>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.7, delay: 0.6 }}
-              className="flex flex-wrap items-center justify-center gap-8 md:gap-14 mt-18 pt-10"
-            >
+            <div className="flex flex-wrap items-center justify-center gap-8 md:gap-14 mt-18 pt-10">
               {STATS.map(({ value, suffix, label, Icon }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <Icon
-                    size={18}
-                    className="text-indigo-300"
-                    aria-hidden="true"
-                  />
+                  <Icon size={18} className="text-indigo-300" />
                   <div>
                     <p className="text-2xl font-black text-white leading-none">
                       <AnimatedCount target={value} suffix={suffix} />
@@ -385,44 +332,25 @@ const HomePage = () => {
                   </div>
                 </div>
               ))}
-            </motion.div>
+            </div>
           </div>
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/30"
-            aria-hidden="true"
-          >
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/30 animate-bounce">
             <ChevronDown size={28} />
-          </motion.div>
+          </div>
         </section>
 
         {/* SERVICES */}
-        <section
-          aria-labelledby="services-heading"
-          className="py-20 sm:py-28 bg-white"
-        >
+        <section className="py-20 sm:py-28 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 sm:mb-14">
               <div>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  className="inline-block px-4 py-1.5 rounded-full text-sm font-bold text-indigo-700 bg-indigo-50 mb-4"
-                >
+                <span className="inline-block px-4 py-1.5 rounded-full text-sm font-bold text-indigo-700 bg-indigo-50 mb-4">
                   Nos services
-                </motion.span>
-                <motion.h2
-                  id="services-heading"
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 leading-tight"
-                >
+                </span>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 leading-tight">
                   Les métiers
                   <br className="hidden sm:block" /> les plus demandés
-                </motion.h2>
+                </h2>
               </div>
               <p className="text-gray-500 text-sm sm:text-base max-w-xs">
                 Professionnels qualifiés, vérifiés et évalués par des milliers
@@ -456,16 +384,10 @@ const HomePage = () => {
         </section>
 
         {/* COMMENT ÇA MARCHE */}
-        <section
-          aria-labelledby="how-heading"
-          className="py-20 sm:py-28 bg-gray-50"
-        >
+        <section className="py-20 sm:py-28 bg-gray-50">
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center mb-12 sm:mb-16">
-              <h2
-                id="how-heading"
-                className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-4 sm:mb-5"
-              >
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-4 sm:mb-5">
                 Réservez en 3 étapes
               </h2>
               <p className="text-gray-500 text-base sm:text-lg">
@@ -492,19 +414,12 @@ const HomePage = () => {
                   desc: "Contactez directement l'artisan ou envoyez une demande.",
                   Icon: ThumbsUp,
                 },
-              ].map(({ n, title, desc, Icon }, i) => (
-                <motion.li
+              ].map(({ n, title, desc, Icon }) => (
+                <li
                   key={n}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.14 }}
-                  className="relative bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm"
+                  className="relative bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm transition-all hover:-translate-y-1"
                 >
-                  <span
-                    className="text-6xl sm:text-8xl font-black text-gray-50 absolute top-3 sm:top-4 right-4 sm:right-5 select-none leading-none"
-                    aria-hidden="true"
-                  >
+                  <span className="text-6xl sm:text-8xl font-black text-gray-50 absolute top-3 sm:top-4 right-4 sm:right-5 select-none leading-none">
                     {n}
                   </span>
                   <div
@@ -513,7 +428,7 @@ const HomePage = () => {
                       background: "linear-gradient(135deg, #6366f1, #7c3aed)",
                     }}
                   >
-                    <Icon size={22} aria-hidden="true" />
+                    <Icon size={22} />
                   </div>
                   <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-2 sm:mb-3">
                     {title}
@@ -521,7 +436,7 @@ const HomePage = () => {
                   <p className="text-gray-500 text-sm sm:text-base leading-relaxed">
                     {desc}
                   </p>
-                </motion.li>
+                </li>
               ))}
             </ol>
           </div>
@@ -539,21 +454,9 @@ const HomePage = () => {
         </Suspense>
 
         {/* CTA ARTISAN */}
-        <section
-          aria-labelledby="cta-heading"
-          className="py-20 sm:py-24 px-6 bg-gray-50"
-        >
+        <section className="py-20 sm:py-24 px-6 bg-gray-50">
           <div className="max-w-5xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative rounded-3xl overflow-hidden"
-              style={{
-                background:
-                  "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #9333ea 100%)",
-              }}
-            >
+            <div className="relative rounded-3xl overflow-hidden transition-all hover:scale-[1.01] bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600">
               <div
                 className="absolute inset-0 opacity-10"
                 aria-hidden="true"
@@ -564,10 +467,7 @@ const HomePage = () => {
                 }}
               />
               <div className="relative px-6 py-12 sm:px-12 md:px-20 md:py-20 text-center">
-                <h2
-                  id="cta-heading"
-                  className="text-2xl sm:text-3xl md:text-5xl font-black text-white mb-4 sm:mb-5"
-                >
+                <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-white mb-4 sm:mb-5">
                   Vous êtes artisan ?
                 </h2>
                 <p className="text-white/75 text-sm sm:text-base md:text-lg max-w-xl mx-auto mb-8 sm:mb-10 leading-relaxed">
@@ -590,24 +490,18 @@ const HomePage = () => {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         </section>
 
         {/* FOOTER */}
-        <footer
-          className="bg-gray-950 text-white pt-12 sm:pt-16 pb-6 sm:pb-8 px-6"
-          role="contentinfo"
-        >
+        <footer className="bg-gray-950 text-white pt-12 sm:pt-16 pb-6 sm:pb-8 px-6">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12 mb-10 sm:mb-14">
               <div className="md:col-span-2">
                 <div className="flex items-center gap-3 mb-4">
                   <div
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-sm sm:text-lg text-white"
-                    style={{
-                      background: "linear-gradient(135deg, #6366f1, #a855f7)",
-                    }}
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-sm sm:text-lg text-white bg-gradient-to-br from-indigo-500 to-purple-600"
                     aria-hidden="true"
                   >
                     AT
@@ -619,6 +513,7 @@ const HomePage = () => {
                   qualifiés et clients au Bénin. Simple, rapide, fiable.
                 </p>
               </div>
+
               <nav aria-label="Liens de la plateforme">
                 <h3 className="font-bold text-xs uppercase tracking-widest text-gray-500 mb-4 sm:mb-5">
                   Plateforme
@@ -640,6 +535,7 @@ const HomePage = () => {
                   ))}
                 </ul>
               </nav>
+
               <nav aria-label="Liens légaux">
                 <h3 className="font-bold text-xs uppercase tracking-widest text-gray-500 mb-4 sm:mb-5">
                   Légal
