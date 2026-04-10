@@ -4,10 +4,12 @@ from .serializers import RegisterSerializer, CustomTokenObtainPairSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
+    parser_classes = [MultiPartParser, FormParser]
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer

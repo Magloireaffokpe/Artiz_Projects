@@ -14,6 +14,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     tariff_max = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
     description = serializers.CharField(write_only=True, required=False, allow_blank=True)
     profile_picture = serializers.ImageField(write_only=True, required=False)
+    
 
     class Meta:
         model = User
