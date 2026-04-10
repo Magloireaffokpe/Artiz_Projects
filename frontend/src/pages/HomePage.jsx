@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import { Helmet } from "react-helmet-async";
@@ -11,76 +11,68 @@ import {
   ThumbsUp,
   Star,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-// ─── DATA ─────────────────────────────────────────────────────────────────────
+// ─── COMPOSANT TÉMOIGNAGES (chargé en lazy) ──────────────────────────────────
+const Testimonials = lazy(() => import("../components/Testimonials"));
 
+// ─── DATA SERVICES ─────────────────────────────────────────────────────────────
 const SERVICES = [
   {
     id: "plomberie",
     label: "Plomberie",
     desc: "Canalisations, fuites, installations sanitaires",
-    photo:
-      "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/plomberie.webp",
     count: 1247,
   },
   {
     id: "electricite",
     label: "Électricité",
     desc: "Câblage, tableau, dépannage d'urgence",
-    photo:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/electricite.webp",
     count: 982,
   },
   {
     id: "couture",
     label: "Couture",
     desc: "Confection, retouches, créations sur mesure",
-    photo:
-      "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/couture.webp",
     count: 2156,
   },
   {
     id: "menuiserie",
     label: "Menuiserie",
     desc: "Meubles, portes, agencement bois",
-    photo:
-      "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/menuiserie.webp",
     count: 873,
   },
   {
     id: "maconnerie",
     label: "Maçonnerie",
     desc: "Construction, crépissage, carrelage",
-    photo:
-      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/maconnerie.webp",
     count: 1520,
   },
   {
     id: "peinture",
     label: "Peinture",
     desc: "Intérieur, extérieur, finitions",
-    photo:
-      "https://images.unsplash.com/photo-1562259929-b4e1fd3aef09?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/peinture.webp",
     count: 634,
   },
   {
     id: "mecanique",
     label: "Mécanique",
     desc: "Réparation auto/moto, vidange, diagnostic",
-    photo:
-      "https://images.unsplash.com/photo-1615906655593-ad0386982a0f?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/mecanique.webp",
     count: 1142,
   },
   {
     id: "coiffure",
     label: "Coiffure & Beauté",
     desc: "Coupes, tresses, soins esthétiques",
-    photo:
-      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&q=80&auto=format&fit=crop",
+    photo: "/images/coiffure.webp",
     count: 2460,
   },
 ];
@@ -92,32 +84,7 @@ const STATS = [
   { value: 24, suffix: "h", label: "Délai de réponse moyen", Icon: Clock },
 ];
 
-const TESTIMONIALS = [
-  {
-    name: "Adjoua Koffi",
-    city: "Cotonou",
-    rating: 5,
-    initials: "AK",
-    text: "J'ai trouvé un excellent électricien en moins de 2 heures. Service irréprochable, je recommande à 100 %.",
-  },
-  {
-    name: "Moussa Dembélé",
-    city: "Parakou",
-    rating: 5,
-    initials: "MD",
-    text: "Plateforme super intuitive. Mon artisan est arrivé à l'heure et a fait un travail soigné. Merci Artiz !",
-  },
-  {
-    name: "Fatou Traoré",
-    city: "Bohicon",
-    rating: 5,
-    initials: "FT",
-    text: "Enfin une solution fiable pour trouver de bons artisans. Les profils sont bien détaillés et les tarifs clairs.",
-  },
-];
-
 // ─── ANIMATED COUNT ────────────────────────────────────────────────────────────
-
 function AnimatedCount({ target, suffix }) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
@@ -146,8 +113,7 @@ function AnimatedCount({ target, suffix }) {
   );
 }
 
-// ─── SERVICE CARD (améliorée responsive) ─────────────────────────────────────
-
+// ─── SERVICE CARD ──────────────────────────────────────────────────────────────
 function ServiceCard({ service, onClick }) {
   return (
     <motion.article
@@ -172,8 +138,6 @@ function ServiceCard({ service, onClick }) {
         height={450}
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
-
-      {/* Gradient overlay plus prononcé en bas pour lisibilité */}
       <div
         className="absolute inset-0"
         aria-hidden="true"
@@ -182,8 +146,6 @@ function ServiceCard({ service, onClick }) {
             "linear-gradient(to top, rgba(8,8,25,0.95) 0%, rgba(8,8,25,0.6) 50%, transparent 100%)",
         }}
       />
-
-      {/* Badge demandes */}
       <div
         className="absolute top-3 right-3 px-2 py-1 rounded-full text-white text-[10px] sm:text-xs font-bold"
         style={{
@@ -194,8 +156,6 @@ function ServiceCard({ service, onClick }) {
       >
         {service.count.toLocaleString("fr-FR")} demandes
       </div>
-
-      {/* Texte – padding responsive, tailles adaptées */}
       <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-5">
         <h3 className="text-white font-black text-sm sm:text-base md:text-lg leading-tight mb-0.5">
           {service.label}
@@ -214,24 +174,11 @@ function ServiceCard({ service, onClick }) {
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
-
+// ─── COMPOSANT PRINCIPAL ─────────────────────────────────────────────────────
 const HomePage = () => {
   const navigate = useNavigate();
   const [serviceType, setServiceType] = useState("");
   const [location, setLocation] = useState("");
-  const [testimonialIdx, setTestimonialIdx] = useState(0);
-  const autoRef = useRef(null);
-
-  useEffect(() => {
-    autoRef.current = setInterval(
-      () => setTestimonialIdx((i) => (i + 1) % TESTIMONIALS.length),
-      5000,
-    );
-    return () => clearInterval(autoRef.current);
-  }, []);
-
-  const pauseAuto = () => clearInterval(autoRef.current);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -258,7 +205,6 @@ const HomePage = () => {
           property="og:description"
           content="500+ artisans vérifiés, disponibles rapidement."
         />
-        <link rel="preconnect" href="https://images.unsplash.com" />
       </Helmet>
 
       <a
@@ -269,13 +215,13 @@ const HomePage = () => {
       </a>
 
       <main id="main-content">
-        {/* ========== HERO ========== */}
+        {/* HERO */}
         <section
           aria-label="Bienvenue sur Artiz"
           className="relative min-h-screen flex items-center justify-center overflow-hidden -mt-20"
         >
           <img
-            src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=85&w=2070&auto=format&fit=crop"
+            src="/images/hero.webp"
             alt="Artisans maçons travaillant sur un chantier de construction"
             fetchpriority="high"
             width={2070}
@@ -451,7 +397,7 @@ const HomePage = () => {
           </motion.div>
         </section>
 
-        {/* ========== SERVICES (responsive amélioré) ========== */}
+        {/* SERVICES */}
         <section
           aria-labelledby="services-heading"
           className="py-20 sm:py-28 bg-white"
@@ -509,7 +455,7 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* ========== COMMENT ÇA MARCHE ========== */}
+        {/* COMMENT ÇA MARCHE */}
         <section
           aria-labelledby="how-heading"
           className="py-20 sm:py-28 bg-gray-50"
@@ -526,7 +472,6 @@ const HomePage = () => {
                 Moins de 5 minutes suffisent.
               </p>
             </div>
-
             <ol className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
               {[
                 {
@@ -582,141 +527,18 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* ========== TÉMOIGNAGES ========== */}
-        <section
-          aria-labelledby="testimonials-heading"
-          className="py-20 sm:py-28 bg-white overflow-hidden"
+        {/* TÉMOIGNAGES (lazy loading) */}
+        <Suspense
+          fallback={
+            <div className="h-96 flex items-center justify-center">
+              Chargement...
+            </div>
+          }
         >
-          <div className="max-w-4xl mx-auto px-6">
-            <div className="text-center mb-12 sm:mb-14">
-              <h2
-                id="testimonials-heading"
-                className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900"
-              >
-                Ils nous font confiance
-              </h2>
-            </div>
+          <Testimonials />
+        </Suspense>
 
-            <div
-              role="region"
-              aria-label="Témoignages clients"
-              aria-roledescription="carrousel"
-            >
-              <div className="relative" style={{ minHeight: 280 }}>
-                {TESTIMONIALS.map((t, i) => (
-                  <div
-                    key={i}
-                    role="group"
-                    aria-roledescription="diapositive"
-                    aria-label={`Témoignage ${i + 1} sur ${TESTIMONIALS.length}`}
-                    aria-hidden={i !== testimonialIdx}
-                    style={{
-                      position: i === 0 ? "relative" : "absolute",
-                      inset: 0,
-                      opacity: i === testimonialIdx ? 1 : 0,
-                      transform: `translateY(${i === testimonialIdx ? 0 : 14}px)`,
-                      transition: "opacity 0.5s ease, transform 0.5s ease",
-                      pointerEvents: i === testimonialIdx ? "auto" : "none",
-                    }}
-                  >
-                    <blockquote className="bg-gray-50 rounded-2xl sm:rounded-3xl p-6 sm:p-10 border border-gray-100">
-                      <div className="flex gap-1 mb-4 sm:mb-6">
-                        {Array.from({ length: 5 }).map((_, j) => (
-                          <Star
-                            key={j}
-                            size={18}
-                            className={
-                              j < t.rating
-                                ? "fill-amber-400 text-amber-400"
-                                : "text-gray-200"
-                            }
-                            aria-hidden="true"
-                          />
-                        ))}
-                      </div>
-                      <p className="text-base sm:text-xl text-gray-700 italic leading-relaxed mb-6 sm:mb-8">
-                        "{t.text}"
-                      </p>
-                      <footer className="flex items-center gap-3 sm:gap-4">
-                        <div
-                          className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm text-white"
-                          style={{
-                            background:
-                              "linear-gradient(135deg, #6366f1, #7c3aed)",
-                          }}
-                          aria-hidden="true"
-                        >
-                          {t.initials}
-                        </div>
-                        <div>
-                          <cite className="font-black text-gray-900 not-italic block text-sm sm:text-base">
-                            {t.name}
-                          </cite>
-                          <span className="text-gray-400 text-xs sm:text-sm">
-                            {t.city}
-                          </span>
-                        </div>
-                      </footer>
-                    </blockquote>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-center gap-4 mt-8 sm:mt-10">
-                <button
-                  onClick={() => {
-                    pauseAuto();
-                    setTestimonialIdx(
-                      (i) =>
-                        (i - 1 + TESTIMONIALS.length) % TESTIMONIALS.length,
-                    );
-                  }}
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-indigo-600 transition-colors"
-                  aria-label="Témoignage précédent"
-                >
-                  <ChevronLeft size={16} aria-hidden="true" />
-                </button>
-                <div
-                  role="tablist"
-                  aria-label="Navigation témoignages"
-                  className="flex gap-2"
-                >
-                  {TESTIMONIALS.map((_, i) => (
-                    <button
-                      key={i}
-                      role="tab"
-                      aria-selected={i === testimonialIdx}
-                      aria-label={`Témoignage ${i + 1}`}
-                      onClick={() => {
-                        pauseAuto();
-                        setTestimonialIdx(i);
-                      }}
-                      className="rounded-full transition-all focus-visible:ring-2 focus-visible:ring-indigo-500"
-                      style={{
-                        width: i === testimonialIdx ? 24 : 8,
-                        height: 8,
-                        background:
-                          i === testimonialIdx ? "#6366f1" : "#e5e7eb",
-                      }}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    pauseAuto();
-                    setTestimonialIdx((i) => (i + 1) % TESTIMONIALS.length);
-                  }}
-                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-indigo-600 transition-colors"
-                  aria-label="Témoignage suivant"
-                >
-                  <ChevronRightIcon size={16} aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ========== CTA ARTISAN ========== */}
+        {/* CTA ARTISAN */}
         <section
           aria-labelledby="cta-heading"
           className="py-20 sm:py-24 px-6 bg-gray-50"
@@ -772,7 +594,7 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* ========== FOOTER ========== */}
+        {/* FOOTER */}
         <footer
           className="bg-gray-950 text-white pt-12 sm:pt-16 pb-6 sm:pb-8 px-6"
           role="contentinfo"
@@ -797,7 +619,6 @@ const HomePage = () => {
                   qualifiés et clients au Bénin. Simple, rapide, fiable.
                 </p>
               </div>
-
               <nav aria-label="Liens de la plateforme">
                 <h3 className="font-bold text-xs uppercase tracking-widest text-gray-500 mb-4 sm:mb-5">
                   Plateforme
@@ -819,7 +640,6 @@ const HomePage = () => {
                   ))}
                 </ul>
               </nav>
-
               <nav aria-label="Liens légaux">
                 <h3 className="font-bold text-xs uppercase tracking-widest text-gray-500 mb-4 sm:mb-5">
                   Légal
