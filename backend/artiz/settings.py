@@ -3,7 +3,7 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xxx-changez-moi')
+SECRET_KEY = os.environ.get('SECRET_KEY', '+#68sax218k8x131zj-d)=*8+^e(1fhp1rvm7ux$nm#x!qv*rb')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['magloireaffokpe.pythonanywhere.com', 'localhost', '127.0.0.1']
