@@ -1,570 +1,489 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   Mail,
-  Phone,
   Lock,
-  Eye,
-  EyeOff,
-  Briefcase,
+  Phone,
   MapPin,
+  Briefcase,
   DollarSign,
+  FileText,
   ChevronRight,
   ChevronLeft,
   CheckCircle,
-  Image as ImageIcon,
+  Eye,
+  EyeOff,
+  Shield,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { register } from "../services/authService";
+import apiClient from "../services/api";
 
-// ============================================================
-// COMPOSANT INPUT FIELD RÉUTILISABLE (memoized)
-// ============================================================
-const InputField = React.memo(
-  ({
-    label,
-    name,
-    type = "text",
-    icon,
-    placeholder,
-    isTextArea,
-    options,
-    value,
-    onChange,
-    error,
-    showPassword,
-    setShowPassword,
-    showConfirmPassword,
-    setShowConfirmPassword,
-    accept,
-  }) => {
-    const [localShowPassword, setLocalShowPassword] = useState(false);
-    const [localShowConfirm, setLocalShowConfirm] = useState(false);
+const METIERS = [
+  { value: "plomberie", label: "Plomberie" },
+  { value: "electricite", label: "Électricité" },
+  { value: "menuiserie", label: "Menuiserie" },
+  { value: "maconnerie", label: "Maçonnerie" },
+  { value: "couture", label: "Couture" },
+  { value: "mecanique", label: "Mécanique" },
+  { value: "coiffure", label: "Coiffure" },
+  { value: "peinture", label: "Peinture" },
+  { value: "autre", label: "Autre" },
+];
 
-    const isPassword = name === "password";
-    const isConfirm = name === "confirm_password";
-    const show = isPassword
-      ? (showPassword ?? localShowPassword)
-      : (showConfirmPassword ?? localShowConfirm);
+const STEPS = ["Compte", "Expertise", "Tarification", "Confirmation"];
 
-    const handleToggle = () => {
-      if (isPassword) {
-        if (setShowPassword) setShowPassword(!showPassword);
-        else setLocalShowPassword(!localShowPassword);
-      } else if (isConfirm) {
-        if (setShowConfirmPassword)
-          setShowConfirmPassword(!showConfirmPassword);
-        else setLocalShowConfirm(!localShowConfirm);
-      }
-    };
-
-    return (
-      <div className="mb-5 relative">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {label}
-        </label>
-        <div className="relative">
-          {!isTextArea && !options && type !== "file" && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-              {icon}
-            </div>
-          )}
-
-          {isTextArea ? (
-            <textarea
-              name={name}
-              value={value}
-              onChange={onChange}
-              placeholder={placeholder}
-              rows="3"
-              className={`w-full pl-4 pr-4 py-3 rounded-xl border ${
-                error
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-              } transition-all bg-gray-50 focus:bg-white outline-none`}
-            />
-          ) : options ? (
-            <select
-              name={name}
-              value={value}
-              onChange={onChange}
-              className={`w-full pl-4 pr-10 py-3 rounded-xl border ${
-                error
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-              } transition-all bg-gray-50 focus:bg-white outline-none appearance-none`}
-            >
-              <option value="">Sélectionnez une option...</option>
-              {options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          ) : type === "file" ? (
-            <input
-              type="file"
-              name={name}
-              accept={accept}
-              onChange={onChange}
-              className={`w-full pl-4 pr-4 py-2 rounded-xl border ${
-                error ? "border-red-500" : "border-gray-200"
-              } transition-all bg-gray-50 outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100`}
-            />
-          ) : (
-            <input
-              type={type === "number" ? "text" : type}
-              name={name}
-              value={value}
-              onChange={onChange}
-              placeholder={placeholder}
-              className={`w-full ${icon ? "pl-10" : "pl-4"} pr-4 py-3 rounded-xl border ${
-                error
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-              } transition-all bg-gray-50 focus:bg-white outline-none`}
-            />
-          )}
-
-          {(isPassword || isConfirm) && (
-            <button
-              type="button"
-              onClick={handleToggle}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-            >
-              {show ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          )}
-        </div>
-        {error && (
-          <p className="text-red-500 text-xs mt-1 font-medium">{error}</p>
-        )}
-      </div>
-    );
-  },
+const InputField = ({ label, icon, error, ...props }) => (
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+      {label}
+    </label>
+    <div
+      className={`flex items-center bg-gray-50 rounded-xl border transition-all ${error ? "border-red-300" : "border-gray-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100"}`}
+    >
+      {icon && <span className="pl-4 text-gray-400 flex-shrink-0">{icon}</span>}
+      {props.type === "select" ? (
+        <select
+          {...props}
+          type={undefined}
+          className="w-full px-4 py-3.5 bg-transparent outline-none text-sm text-gray-700 cursor-pointer"
+        >
+          <option value="">Sélectionner…</option>
+          {METIERS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      ) : props.isTextarea ? (
+        <textarea
+          {...props}
+          isTextarea={undefined}
+          rows={4}
+          className="w-full px-4 py-3 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400 resize-none"
+        />
+      ) : (
+        <input
+          {...props}
+          className="w-full px-4 py-3.5 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
+        />
+      )}
+    </div>
+    {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
+  </div>
 );
 
-// ============================================================
-// COMPOSANT PRINCIPAL
-// ============================================================
 const DevenirArtisanPage = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [formData, setFormData] = useState({
+  const [data, setData] = useState({
     first_name: "",
     last_name: "",
     email: "",
-    phone: "",
     password: "",
-    confirm_password: "",
+    phone: "",
     metier: "",
-    description: "",
     address: "",
+    whatsapp_number: "",
     tariff_min: "",
     tariff_max: "",
-    whatsapp_number: "",
-    profile_picture: null,
+    description: "",
   });
-
   const [errors, setErrors] = useState({});
 
-  const steps = [
-    { id: 1, title: "Identité", icon: <User size={18} /> },
-    { id: 2, title: "Sécurité", icon: <Lock size={18} /> },
-    { id: 3, title: "Profil Pro", icon: <Briefcase size={18} /> },
-    { id: 4, title: "Tarifs", icon: <DollarSign size={18} /> },
-  ];
-
-  const handleChange = (e) => {
-    const { name, value, type, files } = e.target;
-    if (type === "file") {
-      setFormData((prev) => ({ ...prev, [name]: files[0] || null }));
-      if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-      if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
-    }
+  const update = (field, value) => {
+    setData((p) => ({ ...p, [field]: value }));
+    if (errors[field]) setErrors((p) => ({ ...p, [field]: undefined }));
   };
 
   const validateStep = () => {
-    const newErrors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (currentStep === 1) {
-      if (!formData.first_name.trim())
-        newErrors.first_name = "Le prénom est requis";
-      if (!formData.last_name.trim()) newErrors.last_name = "Le nom est requis";
-      if (!formData.email.trim() || !emailRegex.test(formData.email))
-        newErrors.email = "Email invalide";
-      if (!formData.phone.trim()) newErrors.phone = "Le téléphone est requis";
-    } else if (currentStep === 2) {
-      if (formData.password.length < 6)
-        newErrors.password =
-          "Le mot de passe doit contenir au moins 6 caractères";
-      if (formData.password !== formData.confirm_password)
-        newErrors.confirm_password = "Les mots de passe ne correspondent pas";
-    } else if (currentStep === 3) {
-      if (!formData.metier)
-        newErrors.metier = "Veuillez sélectionner un métier";
-      if (!formData.address.trim()) newErrors.address = "L'adresse est requise";
-      if (!formData.whatsapp_number.trim())
-        newErrors.whatsapp_number = "Le numéro WhatsApp est requis";
-    } else if (currentStep === 4) {
-      if (!formData.tariff_min) newErrors.tariff_min = "Tarif minimum requis";
-      if (!formData.tariff_max) newErrors.tariff_max = "Tarif maximum requis";
-      if (Number(formData.tariff_min) > Number(formData.tariff_max)) {
-        newErrors.tariff_max = "Le tarif max doit être supérieur au min";
-      }
+    const e = {};
+    if (step === 0) {
+      if (!data.first_name.trim()) e.first_name = "Prénom requis";
+      if (!data.last_name.trim()) e.last_name = "Nom requis";
+      if (!data.email || !/\S+@\S+\.\S+/.test(data.email))
+        e.email = "Email invalide";
+      if (!data.password || data.password.length < 6)
+        e.password = "Min. 6 caractères";
+      if (!data.phone.trim()) e.phone = "Téléphone requis";
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (step === 1) {
+      if (!data.metier) e.metier = "Métier requis";
+      if (!data.address.trim()) e.address = "Adresse requise";
+    }
+    if (step === 2) {
+      if (!data.tariff_min || isNaN(data.tariff_min))
+        e.tariff_min = "Tarif min requis";
+      if (!data.tariff_max || isNaN(data.tariff_max))
+        e.tariff_max = "Tarif max requis";
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const handleNext = () => {
-    if (validateStep()) setCurrentStep((prev) => prev + 1);
-    else toast.error("Veuillez corriger les erreurs avant de continuer.");
+  const next = () => {
+    if (validateStep()) setStep((s) => Math.min(s + 1, 3));
   };
+  const prev = () => setStep((s) => Math.max(s - 1, 0));
 
-  const handlePrev = () => setCurrentStep((prev) => prev - 1);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateStep()) {
-      toast.error("Veuillez vérifier les champs du formulaire.");
-      return;
-    }
-
+  const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      localStorage.removeItem("access");
-
-      const submitData = new FormData();
-      // Ajouter tous les champs du formulaire
-      Object.keys(formData).forEach((key) => {
-        if (formData[key] !== null && formData[key] !== "") {
-          submitData.append(key, formData[key]);
-        }
-      });
-      submitData.append("is_artisan", true);
-
-      await register(submitData);
-
-      toast.success("Compte artisan créé avec succès ! Connectez-vous.");
+      await apiClient.post("/auth/register/artisan/", data);
+      toast.success("Compte créé avec succès ! Connectez-vous maintenant.");
       navigate("/login");
-    } catch (error) {
-      console.error("Détails de l'erreur :", error.response?.data);
-      toast.error(
-        error.response?.data?.detail ||
-          JSON.stringify(error.response?.data) ||
-          "Une erreur est survenue.",
-      );
+    } catch (err) {
+      const msg = err.response?.data;
+      if (typeof msg === "object") {
+        const first = Object.values(msg)[0];
+        toast.error(Array.isArray(first) ? first[0] : first);
+      } else {
+        toast.error("Une erreur est survenue. Réessayez.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            Rejoignez{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
-              Artiz
-            </span>
-          </h2>
-          <p className="mt-3 text-lg text-gray-500">
-            Proposez vos services à des milliers de clients près de chez vous.
-          </p>
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-          {/* Stepper Header */}
-          <div className="bg-gray-50/50 border-b border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              {steps.map((step, index) => (
-                <React.Fragment key={step.id}>
-                  <div
-                    className={`flex flex-col items-center ${currentStep >= step.id ? "text-indigo-600" : "text-gray-400"}`}
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-colors duration-300 ${
-                        currentStep > step.id
-                          ? "bg-indigo-600 text-white"
-                          : currentStep === step.id
-                            ? "bg-indigo-100 border-2 border-indigo-600"
-                            : "bg-gray-100"
-                      }`}
-                    >
-                      {currentStep > step.id ? (
-                        <CheckCircle size={20} />
-                      ) : (
-                        step.icon
-                      )}
-                    </div>
-                    <span className="text-xs font-medium hidden sm:block">
-                      {step.title}
-                    </span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div
-                      className={`flex-1 h-1 mx-4 rounded ${
-                        currentStep > step.id ? "bg-indigo-600" : "bg-gray-200"
-                      }`}
-                    />
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-
-          {/* Form Content */}
-          <div className="p-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                {/* Étape 1 : Identité */}
-                {currentStep === 1 && (
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
-                      Informations Personnelles
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <InputField
-                        label="Prénom"
-                        name="first_name"
-                        icon={<User size={18} />}
-                        placeholder="Ex: Jean"
-                        value={formData.first_name}
-                        onChange={handleChange}
-                        error={errors.first_name}
-                      />
-                      <InputField
-                        label="Nom"
-                        name="last_name"
-                        icon={<User size={18} />}
-                        placeholder="Ex: Dupont"
-                        value={formData.last_name}
-                        onChange={handleChange}
-                        error={errors.last_name}
-                      />
-                    </div>
-                    <InputField
-                      label="Adresse Email"
-                      name="email"
-                      type="email"
-                      icon={<Mail size={18} />}
-                      placeholder="jean@exemple.com"
-                      value={formData.email}
-                      onChange={handleChange}
-                      error={errors.email}
-                    />
-                    <InputField
-                      label="Téléphone"
-                      name="phone"
-                      type="tel"
-                      icon={<Phone size={18} />}
-                      placeholder="+229 XX XX XX XX"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      error={errors.phone}
-                    />
-                  </div>
-                )}
-
-                {/* Étape 2 : Sécurité */}
-                {currentStep === 2 && (
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
-                      Sécurité de votre compte
-                    </h3>
-                    <InputField
-                      label="Mot de passe"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      icon={<Lock size={18} />}
-                      placeholder="Minimum 6 caractères"
-                      value={formData.password}
-                      onChange={handleChange}
-                      error={errors.password}
-                      showPassword={showPassword}
-                      setShowPassword={setShowPassword}
-                    />
-                    <InputField
-                      label="Confirmer le mot de passe"
-                      name="confirm_password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      icon={<Lock size={18} />}
-                      placeholder="Retapez votre mot de passe"
-                      value={formData.confirm_password}
-                      onChange={handleChange}
-                      error={errors.confirm_password}
-                      showConfirmPassword={showConfirmPassword}
-                      setShowConfirmPassword={setShowConfirmPassword}
-                    />
-                  </div>
-                )}
-
-                {/* Étape 3 : Profil Pro */}
-                {currentStep === 3 && (
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
-                      Votre Expertise
-                    </h3>
-                    <InputField
-                      label="Domaine d'expertise (Métier)"
-                      name="metier"
-                      options={[
-                        { value: "plomberie", label: "Plomberie" },
-                        { value: "electricite", label: "Électricité" },
-                        { value: "menuiserie", label: "Menuiserie" },
-                        { value: "couture", label: "Couture" },
-                        { value: "mecanique", label: "Mécanique" },
-                        { value: "coiffure", label: "Coiffure" },
-                        { value: "autre", label: "Autre" },
-                      ]}
-                      value={formData.metier}
-                      onChange={handleChange}
-                      error={errors.metier}
-                    />
-                    <InputField
-                      label="Adresse / Ville"
-                      name="address"
-                      icon={<MapPin size={18} />}
-                      placeholder="Ex: Cotonou, Haie Vive"
-                      value={formData.address}
-                      onChange={handleChange}
-                      error={errors.address}
-                    />
-                    <InputField
-                      label="Numéro WhatsApp"
-                      name="whatsapp_number"
-                      type="tel"
-                      icon={<Phone size={18} />}
-                      placeholder="+229 XX XX XX XX"
-                      value={formData.whatsapp_number}
-                      onChange={handleChange}
-                      error={errors.whatsapp_number}
-                    />
-                    <InputField
-                      label="Photo de profil (optionnelle)"
-                      name="profile_picture"
-                      type="file"
-                      accept="image/*"
-                      icon={<ImageIcon size={18} />}
-                      onChange={handleChange}
-                      error={errors.profile_picture}
-                    />
-                    <InputField
-                      label="Description de vos services"
-                      name="description"
-                      isTextArea={true}
-                      placeholder="Décrivez votre expérience et ce qui vous démarque..."
-                      value={formData.description}
-                      onChange={handleChange}
-                      error={errors.description}
-                    />
-                  </div>
-                )}
-
-                {/* Étape 4 : Tarifs */}
-                {currentStep === 4 && (
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">
-                      Votre Tarification
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <InputField
-                        label="Tarif Min (FCFA)"
-                        name="tariff_min"
-                        type="number"
-                        icon={<DollarSign size={18} />}
-                        placeholder="5000"
-                        value={formData.tariff_min}
-                        onChange={handleChange}
-                        error={errors.tariff_min}
-                      />
-                      <InputField
-                        label="Tarif Max (FCFA)"
-                        name="tariff_max"
-                        type="number"
-                        icon={<DollarSign size={18} />}
-                        placeholder="50000"
-                        value={formData.tariff_max}
-                        onChange={handleChange}
-                        error={errors.tariff_max}
-                      />
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Navigation Buttons */}
-            <div className="mt-10 flex items-center justify-between pt-6 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={handlePrev}
-                disabled={currentStep === 1}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
-                  currentStep === 1
-                    ? "text-gray-300 cursor-not-allowed"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <ChevronLeft size={20} /> Retour
-              </button>
-
-              {currentStep < 4 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
-                >
-                  Suivant <ChevronRight size={20} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className={`flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg ${
-                    isSubmitting ? "opacity-70 cursor-wait" : ""
-                  }`}
-                >
-                  {isSubmitting
-                    ? "Création en cours..."
-                    : "Terminer l'inscription"}{" "}
-                  <CheckCircle size={20} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <p className="text-center mt-8 text-gray-600">
-          Vous avez déjà un compte ?{" "}
-          <Link
-            to="/login"
-            className="font-semibold text-indigo-600 hover:underline"
+  const stepContent = [
+    // Step 0 — Account
+    <div className="space-y-5" key="s0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <InputField
+          label="Prénom"
+          icon={<User size={17} />}
+          name="first_name"
+          type="text"
+          placeholder="Votre prénom"
+          value={data.first_name}
+          onChange={(e) => update("first_name", e.target.value)}
+          error={errors.first_name}
+          aria-required="true"
+        />
+        <InputField
+          label="Nom"
+          icon={<User size={17} />}
+          name="last_name"
+          type="text"
+          placeholder="Votre nom"
+          value={data.last_name}
+          onChange={(e) => update("last_name", e.target.value)}
+          error={errors.last_name}
+          aria-required="true"
+        />
+      </div>
+      <InputField
+        label="Email"
+        icon={<Mail size={17} />}
+        name="email"
+        type="email"
+        placeholder="votre@email.com"
+        value={data.email}
+        onChange={(e) => update("email", e.target.value)}
+        error={errors.email}
+        aria-required="true"
+      />
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Mot de passe
+        </label>
+        <div
+          className={`flex items-center bg-gray-50 rounded-xl border transition-all ${errors.password ? "border-red-300" : "border-gray-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100"}`}
+        >
+          <Lock size={17} className="ml-4 text-gray-400 flex-shrink-0" />
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Min. 6 caractères"
+            value={data.password}
+            onChange={(e) => update("password", e.target.value)}
+            className="flex-1 px-4 py-3.5 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
+            aria-required="true"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="pr-4 text-gray-400 hover:text-gray-600"
+            aria-label={showPassword ? "Masquer" : "Afficher"}
           >
-            Connectez-vous
-          </Link>
+            {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+          </button>
+        </div>
+        {errors.password && (
+          <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>
+        )}
+      </div>
+      <InputField
+        label="Téléphone"
+        icon={<Phone size={17} />}
+        name="phone"
+        type="tel"
+        placeholder="+229 …"
+        value={data.phone}
+        onChange={(e) => update("phone", e.target.value)}
+        error={errors.phone}
+        aria-required="true"
+      />
+    </div>,
+
+    // Step 1 — Expertise
+    <div className="space-y-5" key="s1">
+      <InputField
+        label="Votre métier principal"
+        icon={<Briefcase size={17} />}
+        type="select"
+        value={data.metier}
+        onChange={(e) => update("metier", e.target.value)}
+        error={errors.metier}
+        aria-required="true"
+      />
+      <InputField
+        label="Adresse / Ville"
+        icon={<MapPin size={17} />}
+        name="address"
+        type="text"
+        placeholder="Cotonou, Akpakpa…"
+        value={data.address}
+        onChange={(e) => update("address", e.target.value)}
+        error={errors.address}
+        aria-required="true"
+      />
+      <InputField
+        label="Numéro WhatsApp (optionnel)"
+        icon={<Phone size={17} />}
+        name="whatsapp_number"
+        type="tel"
+        placeholder="+229 …"
+        value={data.whatsapp_number}
+        onChange={(e) => update("whatsapp_number", e.target.value)}
+      />
+      <InputField
+        label="Décrivez votre activité"
+        icon={<FileText size={17} />}
+        name="description"
+        isTextarea
+        placeholder="Parlez de votre expérience, vos spécialités, votre zone d'intervention…"
+        value={data.description}
+        onChange={(e) => update("description", e.target.value)}
+      />
+    </div>,
+
+    // Step 2 — Tariffs
+    <div className="space-y-6" key="s2">
+      <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
+        <p className="text-indigo-700 text-sm font-medium">
+          💡 Indiquez une fourchette de tarifs pour attirer plus de clients.
+          Vous pourrez les modifier à tout moment.
         </p>
       </div>
-    </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <InputField
+          label="Tarif minimum (FCFA)"
+          icon={<DollarSign size={17} />}
+          name="tariff_min"
+          type="number"
+          placeholder="5000"
+          value={data.tariff_min}
+          onChange={(e) => update("tariff_min", e.target.value)}
+          error={errors.tariff_min}
+          aria-required="true"
+        />
+        <InputField
+          label="Tarif maximum (FCFA)"
+          icon={<DollarSign size={17} />}
+          name="tariff_max"
+          type="number"
+          placeholder="50000"
+          value={data.tariff_max}
+          onChange={(e) => update("tariff_max", e.target.value)}
+          error={errors.tariff_max}
+          aria-required="true"
+        />
+      </div>
+    </div>,
+
+    // Step 3 — Confirm
+    <div className="space-y-6" key="s3">
+      <div className="text-center py-4">
+        <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={36} className="text-emerald-500" />
+        </div>
+        <h3 className="text-2xl font-black text-gray-900 mb-2">
+          Tout est prêt !
+        </h3>
+        <p className="text-gray-500">
+          Vérifiez vos informations avant de créer votre compte.
+        </p>
+      </div>
+
+      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-3 text-sm">
+        {[
+          ["Nom", `${data.first_name} ${data.last_name}`],
+          ["Email", data.email],
+          ["Téléphone", data.phone],
+          ["Métier", data.metier],
+          ["Adresse", data.address],
+          [
+            "Tarifs",
+            data.tariff_min && data.tariff_max
+              ? `${Number(data.tariff_min).toLocaleString()} – ${Number(data.tariff_max).toLocaleString()} FCFA`
+              : "Non renseigné",
+          ],
+        ].map(([label, value]) => (
+          <div key={label} className="flex justify-between items-start gap-4">
+            <span className="text-gray-400 font-medium flex-shrink-0">
+              {label}
+            </span>
+            <span className="text-gray-800 font-semibold text-right capitalize">
+              {value || "—"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>,
+  ];
+
+  return (
+    <>
+      <Helmet>
+        <title>Devenir artisan partenaire – Artiz</title>
+        <meta
+          name="description"
+          content="Rejoignez le réseau Artiz et développez votre activité d'artisan au Bénin. Inscription gratuite, visibilité immédiate."
+        />
+      </Helmet>
+
+      <main
+        className="min-h-screen bg-gray-50 py-16 px-4"
+        aria-label="Inscription artisan"
+      >
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-black text-gray-900 mb-3">
+              Rejoignez Artiz
+            </h1>
+            <p className="text-gray-500 text-lg">
+              Créez votre profil gratuit et commencez à recevoir des clients dès
+              aujourd'hui.
+            </p>
+          </div>
+
+          {/* Progress */}
+          <div className="flex items-center justify-between mb-10 px-2">
+            {STEPS.map((label, i) => (
+              <React.Fragment key={label}>
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${i < step ? "bg-emerald-500 text-white" : i === step ? "text-white shadow-lg shadow-indigo-200" : "bg-gray-200 text-gray-400"}`}
+                    style={
+                      i === step
+                        ? {
+                            background:
+                              "linear-gradient(135deg, #6366f1, #7c3aed)",
+                          }
+                        : {}
+                    }
+                  >
+                    {i < step ? <CheckCircle size={18} /> : i + 1}
+                  </div>
+                  <span
+                    className={`text-xs font-semibold hidden sm:block ${i === step ? "text-indigo-600" : "text-gray-400"}`}
+                  >
+                    {label}
+                  </span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div
+                    className={`flex-1 h-0.5 mx-2 transition-colors ${i < step ? "bg-emerald-400" : "bg-gray-200"}`}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Card */}
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+            <div
+              className="h-1"
+              style={{
+                background: "linear-gradient(90deg, #6366f1, #a855f7, #ec4899)",
+              }}
+            />
+
+            <div className="p-8 md:p-10">
+              <h2 className="text-xl font-black text-gray-900 mb-8">
+                {STEPS[step]}
+              </h2>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {stepContent[step]}
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Navigation */}
+              <div className="flex gap-3 mt-10">
+                {step > 0 && (
+                  <button
+                    onClick={prev}
+                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    <ChevronLeft size={18} /> Retour
+                  </button>
+                )}
+                {step < STEPS.length - 1 ? (
+                  <button
+                    onClick={next}
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white transition-all hover:shadow-xl hover:shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98]"
+                    style={{
+                      background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+                    }}
+                  >
+                    Continuer <ChevronRight size={18} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white transition-all hover:shadow-xl hover:shadow-emerald-200 ${isSubmitting ? "opacity-70 cursor-wait" : "hover:scale-[1.02] active:scale-[0.98]"}`}
+                    style={{
+                      background: "linear-gradient(135deg, #10b981, #059669)",
+                    }}
+                    aria-busy={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      "Création du compte…"
+                    ) : (
+                      <>
+                        <CheckCircle size={18} /> Créer mon compte
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Trust note */}
+          <div className="flex items-center gap-2 justify-center mt-6 text-gray-400 text-xs">
+            <Shield size={13} />
+            <span>
+              Inscription gratuite – Aucune commission sur vos revenus
+            </span>
+          </div>
+        </div>
+      </main>
+    </>
   );
 };
 
