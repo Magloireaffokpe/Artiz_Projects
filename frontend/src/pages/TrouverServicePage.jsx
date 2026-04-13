@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import ArtisanCard from "../components/ArtisanCard";
@@ -27,56 +27,83 @@ function TrouverServicePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Chargement quand service ou location change
-  useEffect(() => {
-    const performSearch = async () => {
-      setIsLoading(true);
-      setHasSearched(true);
-      try {
-        const data = await searchArtisans({ metier: service, location });
+  // ✅ Debounce uniquement pour le champ texte (ville)
+  const debounceTimer = useRef(null);
+
+  const fetchArtisans = async (metier, loc) => {
+    let cancelled = false;
+    setIsLoading(true);
+    setHasSearched(true);
+    try {
+      let data;
+      if (metier || loc) {
+        data = await searchArtisans({ metier, location: loc });
+      } else {
+        data = await getAllArtisans();
+      }
+      if (!cancelled) {
         setArtisans(data);
         setError("");
-      } catch (err) {
+      }
+    } catch {
+      if (!cancelled) {
         setArtisans([]);
         setError("Aucun artisan ne correspond à vos critères.");
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    const fetchAll = async () => {
-      setIsLoading(true);
-      setHasSearched(true);
-      try {
-        const data = await getAllArtisans();
-        setArtisans(data);
-        setError("");
-      } catch {
-        setError("Impossible de charger les artisans.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (service || location) {
-      performSearch();
-    } else {
-      fetchAll();
+    } finally {
+      if (!cancelled) setIsLoading(false);
     }
-  }, [service, location]);
+    return () => {
+      cancelled = true;
+    };
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  // ✅ Chargement initial
+  useEffect(() => {
+    fetchArtisans(service, location);
+  }, []); // une seule fois au montage
+
+  // ✅ Le select métier déclenche immédiatement
+  const handleServiceChange = (e) => {
+    const val = e.target.value;
+    setService(val);
     const params = new URLSearchParams();
-    if (service) params.append("service", service);
+    if (val) params.append("service", val);
     if (location) params.append("location", location);
     setSearchParams(params);
+    fetchArtisans(val, location); // immédiat
+  };
+
+  // ✅ Le champ ville attend 500ms après la dernière frappe (debounce)
+  const handleLocationChange = (e) => {
+    const val = e.target.value;
+    setLocation(val);
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (service) params.append("service", service);
+      if (val) params.append("location", val);
+      setSearchParams(params);
+      fetchArtisans(service, val); // déclenché après 500ms
+    }, 500);
   };
 
   const handleReset = () => {
     setService("");
     setLocation("");
     setSearchParams({});
+    fetchArtisans("", "");
+  };
+
+  // Le bouton Filtrer reste utile pour forcer une recherche (ex: après Enter)
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    clearTimeout(debounceTimer.current);
+    const params = new URLSearchParams();
+    if (service) params.append("service", service);
+    if (location) params.append("location", location);
+    setSearchParams(params);
+    fetchArtisans(service, location);
   };
 
   const activeMetier = METIERS.find((m) => m.value === service)?.label;
@@ -124,7 +151,7 @@ function TrouverServicePage() {
                 />
                 <select
                   value={service}
-                  onChange={(e) => setService(e.target.value)}
+                  onChange={handleServiceChange} // ✅ immédiat
                   className="w-full bg-transparent text-gray-700 font-medium py-3.5 focus:outline-none cursor-pointer"
                   aria-label="Filtrer par métier"
                 >
@@ -145,7 +172,7 @@ function TrouverServicePage() {
                   type="text"
                   placeholder="Ville, quartier…"
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={handleLocationChange} // ✅ debounce 500ms
                   className="w-full bg-transparent text-gray-700 py-3.5 focus:outline-none placeholder-gray-400"
                   aria-label="Filtrer par ville"
                 />

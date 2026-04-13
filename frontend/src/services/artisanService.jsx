@@ -1,9 +1,11 @@
 import apiClient from "./api";
 
 export const searchArtisans = async ({ metier, location }) => {
-  const response = await apiClient.get("/artisans/search/", {
-    params: { metier, location },
-  });
+  const params = {};
+  if (metier && metier.trim()) params.metier = metier.trim();
+  if (location && location.trim()) params.location = location.trim();
+
+  const response = await apiClient.get("/artisans/search/", { params });
   return response.data;
 };
 
