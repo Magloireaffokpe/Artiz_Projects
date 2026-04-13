@@ -27,43 +27,43 @@ function TrouverServicePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Charger les artisans quand service ou location change
+  // Chargement quand service ou location change
   useEffect(() => {
+    const performSearch = async () => {
+      setIsLoading(true);
+      setHasSearched(true);
+      try {
+        const data = await searchArtisans({ metier: service, location });
+        setArtisans(data);
+        setError("");
+      } catch (err) {
+        setArtisans([]);
+        setError("Aucun artisan ne correspond à vos critères.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchAll = async () => {
+      setIsLoading(true);
+      setHasSearched(true);
+      try {
+        const data = await getAllArtisans();
+        setArtisans(data);
+        setError("");
+      } catch {
+        setError("Impossible de charger les artisans.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (service || location) {
-      handleSearchFetch({ serviceType: service, location });
+      performSearch();
     } else {
-      fetchAllArtisans();
+      fetchAll();
     }
   }, [service, location]);
-
-  const fetchAllArtisans = async () => {
-    setIsLoading(true);
-    setHasSearched(true);
-    try {
-      const data = await getAllArtisans();
-      setArtisans(data);
-      setError("");
-    } catch {
-      setError("Impossible de charger les artisans.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSearchFetch = async (searchData) => {
-    setIsLoading(true);
-    setHasSearched(true);
-    try {
-      const data = await searchArtisans(searchData);
-      setArtisans(data);
-      setError("");
-    } catch {
-      setArtisans([]);
-      setError("Aucun artisan ne correspond à vos critères.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();

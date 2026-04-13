@@ -1,11 +1,8 @@
 import apiClient from "./api";
 
-export const searchArtisans = async ({ metier, ville }) => {
+export const searchArtisans = async ({ metier, location }) => {
   const response = await apiClient.get("/artisans/search/", {
-    params: {
-      metier,
-      location: ville, // le backend attend "location"
-    },
+    params: { metier, location },
   });
   return response.data;
 };
