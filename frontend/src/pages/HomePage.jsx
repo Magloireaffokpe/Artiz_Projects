@@ -189,7 +189,10 @@ const HomePage = () => {
       toast.error("Précisez un service ou une ville pour lancer la recherche.");
       return;
     }
-    navigate("/trouver-service", { state: { serviceType, location } });
+    const params = new URLSearchParams();
+    if (serviceType) params.append("service", serviceType);
+    if (location.trim()) params.append("location", location.trim());
+    navigate(`/trouver-service?${params.toString()}`);
   };
 
   return (

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import ArtisanCard from "../components/ArtisanCard";
 import { searchArtisans, getAllArtisans } from "../services/artisanService";
-import { Search, MapPin, Filter, SlidersHorizontal, X } from "lucide-react";
+import { Search, MapPin, Filter, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const METIERS = [
@@ -19,25 +19,26 @@ const METIERS = [
 ];
 
 function TrouverServicePage() {
-  const location = useLocation();
-  const initialState = location.state || { serviceType: "", location: "" };
-
-  const [formData, setFormData] = useState(initialState);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [service, setService] = useState(searchParams.get("service") || "");
+  const [location, setLocation] = useState(searchParams.get("location") || "");
   const [artisans, setArtisans] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Charger les artisans quand service ou location change
   useEffect(() => {
-    if (formData.serviceType || formData.location) {
-      handleSearchFetch(formData);
+    if (service || location) {
+      handleSearchFetch({ serviceType: service, location });
     } else {
       fetchAllArtisans();
     }
-  }, []);
+  }, [service, location]);
 
   const fetchAllArtisans = async () => {
     setIsLoading(true);
+    setHasSearched(true);
     try {
       const data = await getAllArtisans();
       setArtisans(data);
@@ -64,23 +65,21 @@ function TrouverServicePage() {
     }
   };
 
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    handleSearchFetch(formData);
+    const params = new URLSearchParams();
+    if (service) params.append("service", service);
+    if (location) params.append("location", location);
+    setSearchParams(params);
   };
 
   const handleReset = () => {
-    setFormData({ serviceType: "", location: "" });
-    setHasSearched(false);
-    fetchAllArtisans();
+    setService("");
+    setLocation("");
+    setSearchParams({});
   };
 
-  const activeMetier = METIERS.find(
-    (m) => m.value === formData.serviceType,
-  )?.label;
+  const activeMetier = METIERS.find((m) => m.value === service)?.label;
 
   return (
     <>
@@ -98,18 +97,11 @@ function TrouverServicePage() {
       </Helmet>
 
       <main className="min-h-screen bg-gray-50">
-        {/* Page Header */}
-        <section
-          className="bg-white border-b border-gray-100 py-10 px-6"
-          aria-labelledby="search-heading"
-        >
+        <section className="bg-white border-b border-gray-100 py-10 px-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
-              <h1
-                id="search-heading"
-                className="text-3xl md:text-4xl font-black text-gray-900 mb-2"
-              >
-                {hasSearched && formData.serviceType
+              <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-2">
+                {hasSearched && service
                   ? `Artisans en ${activeMetier}`
                   : "Tous les artisans"}
               </h1>
@@ -120,12 +112,10 @@ function TrouverServicePage() {
               </p>
             </div>
 
-            {/* Search bar */}
             <form
               onSubmit={handleSubmit}
               className="flex flex-col md:flex-row gap-3"
               role="search"
-              aria-label="Rechercher un artisan"
             >
               <div className="flex-1 flex items-center bg-gray-50 rounded-xl px-4 border border-gray-200 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
                 <Filter
@@ -133,9 +123,8 @@ function TrouverServicePage() {
                   size={18}
                 />
                 <select
-                  name="serviceType"
-                  value={formData.serviceType}
-                  onChange={handleChange}
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
                   className="w-full bg-transparent text-gray-700 font-medium py-3.5 focus:outline-none cursor-pointer"
                   aria-label="Filtrer par métier"
                 >
@@ -154,10 +143,9 @@ function TrouverServicePage() {
                 />
                 <input
                   type="text"
-                  name="location"
                   placeholder="Ville, quartier…"
-                  value={formData.location}
-                  onChange={handleChange}
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
                   className="w-full bg-transparent text-gray-700 py-3.5 focus:outline-none placeholder-gray-400"
                   aria-label="Filtrer par ville"
                 />
@@ -173,7 +161,7 @@ function TrouverServicePage() {
                 >
                   <Search size={18} /> Filtrer
                 </button>
-                {(formData.serviceType || formData.location) && (
+                {(service || location) && (
                   <button
                     type="button"
                     onClick={handleReset}
@@ -188,15 +176,11 @@ function TrouverServicePage() {
           </div>
         </section>
 
-        {/* Results */}
-        <section className="py-10 px-6" aria-label="Résultats de recherche">
+        <section className="py-10 px-6">
           <div className="max-w-7xl mx-auto">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
-                <div
-                  className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"
-                  aria-label="Chargement en cours"
-                />
+                <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
                 <p className="text-gray-400 font-medium">Recherche en cours…</p>
               </div>
             ) : error ? (

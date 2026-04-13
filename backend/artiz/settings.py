@@ -35,11 +35,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
 ]
 
-# Pas de TEMPLATES DIRS car pas de templates Django
+# Dossier contenant le build React (index.html)
+FRONTEND_BUILD_DIR = BASE_DIR / 'frontend_build'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],   # vide
+        'DIRS': [FRONTEND_BUILD_DIR],   # ← ajout essentiel
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -71,9 +73,8 @@ REST_FRAMEWORK = {
     ),
 }
 
-# Dossier contenant le build React (index.html, assets, etc.)
 STATICFILES_DIRS = [
-    BASE_DIR / 'frontend_build',
+    FRONTEND_BUILD_DIR,
 ]
 
 STATIC_URL = '/static/'
@@ -83,7 +84,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = [
-        'https://tonpseudo.pythonanywhere.com',
+        'https://magloireaffokpe.pythonanywhere.com',  # domaine correct
     ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
