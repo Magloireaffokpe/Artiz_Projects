@@ -84,7 +84,7 @@ python manage.py runserver
 ```bash
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 L’application sera accessible sur `http://localhost:3000` (frontend) et l’API sur `http://localhost:8000/api/v1/`.
@@ -111,3 +111,28 @@ Les contributions sont les bienvenues ! Merci de respecter la structure existant
 ## 📄 Licence
 
 Projet réalisé dans le cadre d’une initiative locale. Libre d’utilisation et de modification.
+
+<!-- nouveau-pc:debut -->
+## Installer sur un nouveau PC
+
+**Prérequis :** Git, Python 3.12 et Node.js 20 ou plus.
+
+```bash
+git clone git@github.com:Magloireaffokpe/Artiz_Projects.git
+cd Artiz_Projects/backend
+python3 -m venv env
+source env/bin/activate   # Windows : env\Scripts\activate
+pip install -r requirements.txt
+python manage.py makemigrations artisans users   # les migrations ne sont pas dans Git
+python manage.py migrate
+python manage.py runserver
+
+# Dans un autre terminal
+cd frontend
+npm install
+echo 'VITE_API_URL=http://localhost:8000/api/v1' > .env
+npm run dev                  # http://localhost:3000
+```
+
+**À recopier à la main (hors Git) :** `frontend/.env`, `frontend/.env.production` et, pour conserver les données, `backend/db.sqlite3` (dans ce cas, lancer `python manage.py migrate --fake-initial` à la place de `migrate`).
+<!-- nouveau-pc:fin -->
